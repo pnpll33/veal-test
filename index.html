@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Мои задачи</title>
+  <style>
+    :root {
+      --milk: #fdfcf8;
+      --milk-deep: #f5f2ea;
+      --blue-soft: #dcecf7;
+      --blue: #7fb6da;
+      --blue-deep: #4a8db3;
+      --gold-soft: #fbf3d5;
+      --gold: #e8cd7a;
+      --gold-deep: #c9a83f;
+      --ink: #2f3e46;
+      --ink-light: #7d8b93;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 48px 24px 40px 56px;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(160deg, var(--milk) 0%, var(--blue-soft) 100%);
+      color: var(--ink);
+    }
+
+    .card {
+      width: 100%;
+      max-width: 620px;
+      background: var(--milk);
+      border: 1px solid var(--blue-soft);
+      border-radius: 20px;
+      padding: 40px 36px 32px;
+      box-shadow: 0 18px 40px -24px rgba(74, 141, 179, 0.45);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Светло-жёлтая полоса-акцент сверху карточки */
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 5px;
+      background: linear-gradient(90deg, var(--gold-soft), var(--gold), var(--gold-soft));
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      display: flex;
+      /* иначе .cat-wrap растягивается на всю высоту строки и сердечки
+         появляются высоко над котиком, наезжая на следующую строку */
+      align-items: center;
+      gap: 10px;
+    }
+
+    h1 .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 0 4px var(--gold-soft);
+      flex: 0 0 auto;
+    }
+
+    /* Рыжий котик рядом с заголовком */
+    .cat-wrap {
+      position: relative;
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: flex-end;
+      /* своя система наложения: сердечки не уходят под следующую строку */
+      isolation: isolate;
+      z-index: 2;
+    }
+
+    .cat {
+      width: 46px;
+      height: auto;
+      display: block;
+      transform-origin: 50% 90%;
+      animation: cat-sway 4.5s ease-in-out infinite;
+    }
+
+    /* Табличка с именем котика */
+    .cat-name {
+      position: absolute;
+      bottom: -3px;
+      left: 50%;
+      transform: translateX(-42%) rotate(-4deg);
+      padding: 2px 8px 3px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: 0.02em;
+      color: #6b5216;
+      white-space: nowrap;
+      background: var(--gold-soft);
+      border: 1px solid var(--gold);
+      border-radius: 7px;
+      box-shadow: 0 2px 5px -2px rgba(201, 168, 63, 0.7);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    /* Летящее вверх сердечко, появляется при выполнении задачи */
+    .heart {
+      position: absolute;
+      /* "заякорено" на уровне головы котика: 46px — высота .cat */
+      bottom: calc(100% - 22px);
+      left: 50%;
+      font-size: 15px;
+      line-height: 1;
+      pointer-events: none;
+      user-select: none;
+      /* увеличиваем зону видимости: сердечки летят поверх (z-index не нужен: они не позиционированы в потоке текста) */
+      animation: heart-float 1.2s ease-out forwards;
+    }
+
+    @keyframes cat-sway {
+      0%, 100% { transform: rotate(-3deg); }
+      50%      { transform: rotate(3deg); }
+    }
+
+    @keyframes heart-float {
+      0%   { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
+      25%  { transform: translate(-50%, -12px) scale(1.1); opacity: 1; }
+      100% { transform: translate(-50%, -46px) scale(0.85); opacity: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .cat { animation: none; }
+      .heart { animation-duration: 0.9s; }
+    }
+
+    .subtitle {
+      margin: 0 0 24px;
+      font-size: 14px;
+      color: var(--ink-light);
+      /* клики по подзаголовку не должны "съедать" взаимодействие с заголовком */
+      position: relative;
+    }
+
+    /* Форма добавления задачи */
+    .add-form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .add-input {
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 13px 16px;
+      font-family: inherit;
+      font-size: 15px;
+      color: var(--ink);
+      background: var(--milk-deep);
+      border: 1px solid var(--blue-soft);
+      border-radius: 12px;
+      transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .add-input::placeholder {
+      color: var(--ink-light);
+    }
+
+    .add-input:focus {
+      outline: none;
+      background: var(--milk);
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px var(--gold-soft);
+    }
+
+    .add-button {
+      flex: 0 0 auto;
+      padding: 13px 22px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      color: #4a3d12;
+      background: var(--gold-soft);
+      border: 1px solid var(--gold);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .add-button:hover {
+      background: #f7e9bd;
+      border-color: var(--gold-deep);
+      transform: translateY(-1px);
+    }
+
+    .add-button:active {
+      transform: translateY(0);
+    }
+
+    .add-button:focus-visible {
+      outline: 2px solid var(--gold-deep);
+      outline-offset: 2px;
+    }
+
+    .tasks {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      /* список всегда выше декоративных слоёв карточки */
+      position: relative;
+      z-index: 1;
+    }
+
+    .task {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 18px;
+      background: var(--milk-deep);
+      border: 1px solid transparent;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+      user-select: none;
+      /* горизонтальное сжатие нужно для любого будущего эффекта, не мешает клику */
+    }
+
+    .task:hover {
+      border-color: var(--blue);
+      transform: translateY(-1px);
+    }
+
+    .task:focus-visible {
+      outline: 2px solid var(--blue-deep);
+      outline-offset: 2px;
+    }
+
+    .check {
+      flex: 0 0 auto;
+      width: 22px;
+      height: 22px;
+      border: 2px solid var(--blue);
+      border-radius: 7px;
+      background: var(--milk);
+      display: grid;
+      place-items: center;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .check::after {
+      content: "";
+      width: 10px;
+      height: 5px;
+      border-left: 2px solid #fff;
+      border-bottom: 2px solid #fff;
+      transform: rotate(-45deg) scale(0.4);
+      opacity: 0;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      margin-top: -2px;
+    }
+
+    .task-text {
+      flex: 1 1 auto;
+      font-size: 15px;
+      line-height: 1.4;
+      transition: color 0.2s ease;
+      word-break: break-word;
+    }
+
+    .task-note {
+      flex: 0 0 auto;
+      font-size: 12px;
+      color: var(--ink-light);
+      transition: opacity 0.2s ease;
+    }
+
+    /* Кнопка удаления задачи */
+    .task-delete {
+      flex: 0 0 auto;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      font-family: inherit;
+      font-size: 17px;
+      line-height: 1;
+      color: var(--ink-light);
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s ease, color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+    }
+
+    .task:hover .task-delete,
+    .task:focus-within .task-delete,
+    .task-delete:focus-visible {
+      opacity: 1;
+    }
+
+    .task-delete:hover {
+      color: var(--gold-deep);
+      background: var(--gold-soft);
+      border-color: var(--gold);
+    }
+
+    .task-delete:focus-visible {
+      outline: 2px solid var(--gold-deep);
+      outline-offset: 2px;
+    }
+
+    .task.done {
+      background: var(--blue-soft);
+      border-color: var(--blue-soft);
+    }
+
+    .task.done .check {
+      background: var(--blue-deep);
+      border-color: var(--blue-deep);
+    }
+
+    .task.done .check::after {
+      opacity: 1;
+      transform: rotate(-45deg) scale(1);
+    }
+
+    .task.done .task-text {
+      color: var(--ink-light);
+      text-decoration: line-through;
+      text-decoration-color: var(--blue);
+    }
+
+    .task.done .task-note {
+      opacity: 1;
+      color: var(--blue-deep);
+    }
+
+    /* Пустое состояние */
+    .empty {
+      margin: 0;
+      padding: 26px 18px;
+      text-align: center;
+      font-size: 14px;
+      color: var(--ink-light);
+      background: var(--milk-deep);
+      border: 1px dashed var(--gold);
+      border-radius: 14px;
+    }
+
+    .footer {
+      margin: 26px 0 0;
+      padding-top: 18px;
+      border-top: 1px solid var(--blue-soft);
+      font-size: 13px;
+      color: var(--ink-light);
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    #progress {
+      color: var(--blue-deep);
+      font-weight: 600;
+    }
+
+    .footer-note {
+      color: var(--gold-deep);
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 24px 14px;
+      }
+
+      .card {
+        padding: 28px 22px;
+      }
+
+      h1 {
+        font-size: 23px;
+      }
+
+      .add-form {
+        flex-wrap: wrap;
+      }
+
+      .add-button {
+        flex: 1 1 100%;
+      }
+
+      .task-delete {
+        opacity: 1;
+      }
+
+      .footer {
+        flex-direction: column;
+        gap: 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>
+      <span class="dot" aria-hidden="true"></span>Мои задачи
+      <span class="cat-wrap" id="catWrap">
+        <!-- Котик нарисован векторно (SVG): без фона и фонового изображения -->
+        <svg class="cat" viewBox="0 0 72 68" role="img" aria-label="Рыжий котик">
+        <defs>
+          <linearGradient id="catFur" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#f6c98c"/>
+            <stop offset="1" stop-color="#e0934a"/>
+          </linearGradient>
+        </defs>
+        <!-- хвост (сбоку от мордочки, не на голове) -->
+        <path d="M52 51c9 2 13-5 10-12-3-8-10-7-12-2" fill="none" stroke="#d98840"
+              stroke-width="6" stroke-linecap="round"/>
+        <!-- ушки: основания лежат на мордочке, без зазора -->
+        <path d="M23 29l-4-15 16 6z" fill="url(#catFur)"/>
+        <path d="M49 29l4-15-16 6z" fill="url(#catFur)"/>
+        <path d="M24 22l-2-7 8 3z" fill="#f0a89a"/>
+        <path d="M48 22l2-7-8 3z" fill="#f0a89a"/>
+        <!-- мордочка -->
+        <ellipse cx="36" cy="38" rx="18" ry="15" fill="url(#catFur)"/>
+        <!-- лапки -->
+        <ellipse cx="28" cy="56" rx="8" ry="5" fill="#efa75f"/>
+        <ellipse cx="44" cy="56" rx="8" ry="5" fill="#efa75f"/>
+        <!-- полоски на лбу (не выходят за голову) -->
+        <path d="M36 27v-5" stroke="#d0803c" stroke-width="3" stroke-linecap="round"/>
+        <path d="M30 28l-2-4" stroke="#d0803c" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M42 28l2-4" stroke="#d0803c" stroke-width="2.5" stroke-linecap="round"/>
+        <!-- глазки -->
+        <circle cx="29.5" cy="37" r="2.6" fill="#43301f"/>
+        <circle cx="42.5" cy="37" r="2.6" fill="#43301f"/>
+        <circle cx="30.5" cy="36" r="0.9" fill="#fff"/>
+        <circle cx="43.5" cy="36" r="0.9" fill="#fff"/>
+        <!-- носик и улыбка -->
+        <path d="M36 43l-2.6 2h5.2z" fill="#e5806f"/>
+        <path d="M33.4 45q2.6 3 5.2 0" fill="none" stroke="#43301f" stroke-width="1.6"
+              stroke-linecap="round"/>
+        <!-- румянец -->
+        <ellipse cx="23.5" cy="43" rx="3.2" ry="2" fill="#f4a99d" opacity="0.75"/>
+        <ellipse cx="48.5" cy="43" rx="3.2" ry="2" fill="#f4a99d" opacity="0.75"/>
+        </svg>
+        <!-- Табличка с именем котика -->
+        <span class="cat-name">Тома</span>
+      </span>
+    </h1>
+    <p class="subtitle">Нажмите на задачу, чтобы отметить её выполненной.</p>
+
+    <form class="add-form" id="addForm" autocomplete="off">
+      <input
+        class="add-input"
+        id="taskInput"
+        type="text"
+        maxlength="120"
+        placeholder="Новая задача..."
+        aria-label="Текст новой задачи"
+      >
+      <button class="add-button" type="submit">Добавить</button>
+    </form>
+
+    <ul class="tasks" id="taskList">
+      <li class="task" role="checkbox" aria-checked="false" tabindex="0">
+        <span class="check" aria-hidden="true"></span>
+        <span class="task-text">Прочитать главу 3 и выписать основные определения</span>
+        <span class="task-note">Учёба</span>
+        <button class="task-delete" type="button" aria-label="Удалить задачу" title="Удалить задачу">×</button>
+      </li>
+      <li class="task" role="checkbox" aria-checked="false" tabindex="0">
+        <span class="check" aria-hidden="true"></span>
+        <span class="task-text">Сделать лабораторную работу №2 по алгоритмам</span>
+        <span class="task-note">Учёба</span>
+        <button class="task-delete" type="button" aria-label="Удалить задачу" title="Удалить задачу">×</button>
+      </li>
+      <li class="task" role="checkbox" aria-checked="false" tabindex="0">
+        <span class="check" aria-hidden="true"></span>
+        <span class="task-text">Подготовить конспект к семинару по истории</span>
+        <span class="task-note">Учёба</span>
+        <button class="task-delete" type="button" aria-label="Удалить задачу" title="Удалить задачу">×</button>
+      </li>
+    </ul>
+
+    <p class="empty" id="emptyState" hidden>Список пуст — добавьте первую задачу выше.</p>
+
+    <div class="footer">
+      <span>Выполнено: <span id="progress">0 из 3</span></span>
+      <span class="footer-note">Клик по задаче переключает статус</span>
+    </div>
+  </main>
+
+  <script>
+    const taskList = document.getElementById("taskList");
+    const addForm = document.getElementById("addForm");
+    const taskInput = document.getElementById("taskInput");
+    const progress = document.getElementById("progress");
+    const emptyState = document.getElementById("emptyState");
+    const catWrap = document.getElementById("catWrap");
+
+    // Ключ, под которым задачи хранятся в localStorage браузера
+    const STORAGE_KEY = "myTasks.v1";
+
+    // Читает задачи из localStorage. Возвращает массив или null, если данных нет/они битые
+    function loadTasks() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return null;
+        return parsed
+          .filter((item) => item && typeof item.text === "string")
+          .map((item) => ({ text: item.text, done: Boolean(item.done) }));
+      } catch (error) {
+        // Повреждённые данные или localStorage недоступен (приватный режим, file://)
+        console.warn("Не удалось прочитать задачи из localStorage:", error);
+        return null;
+      }
+    }
+
+    // Собирает текущее состояние списка и записывает его в localStorage
+    function saveTasks() {
+      try {
+        const data = Array.from(getTasks()).map((task) => ({
+          text: task.querySelector(".task-text").textContent,
+          done: task.classList.contains("done")
+        }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (error) {
+        console.warn("Не удалось сохранить задачи в localStorage:", error);
+      }
+    }
+
+    function getTasks() {
+      return taskList.querySelectorAll(".task");
+    }
+
+    // Поднимает над котиком несколько сердечек и удаляет их после анимации
+    function spawnHearts() {
+      if (!catWrap) return;
+      const count = 3;
+      for (let i = 0; i < count; i++) {
+        const heart = document.createElement("span");
+        heart.className = "heart";
+        heart.textContent = Math.random() < 0.25 ? "💛" : "💙";
+        // Небольшой разброс по горизонтали и задержке, чтобы сердечки не летели столбиком
+        const shift = (i - (count - 1) / 2) * 11 + (Math.random() * 6 - 3);
+        heart.style.marginLeft = shift + "px";
+        heart.style.animationDelay = (i * 90) + "ms";
+        heart.addEventListener("animationend", () => heart.remove());
+        catWrap.appendChild(heart);
+      }
+    }
+
+    function updateProgress() {
+      const tasks = getTasks();
+      const done = taskList.querySelectorAll(".task.done").length;
+      progress.textContent = done + " из " + tasks.length;
+      emptyState.hidden = tasks.length > 0;
+    }
+
+    function toggleTask(task) {
+      const isDone = task.classList.toggle("done");
+      task.setAttribute("aria-checked", String(isDone));
+      updateProgress();
+      saveTasks();
+      // Сердечки только при выполнении, при снятии отметки — не показываем
+      if (isDone) spawnHearts();
+    }
+
+    function deleteTask(task) {
+      task.remove();
+      updateProgress();
+      saveTasks();
+    }
+
+    // Навешивает обработчики на задачу (нужно и для новых, добавленных пользователем)
+    function bindTask(task) {
+      // Событие может прийти с любого вложенного элемента (span, текст внутри него).
+      // event.target может быть текстовым узлом или SVG — у них нет closest(),
+      // поэтому приводим цель к элементу и проверяем его безопасно.
+      function isDeleteClick(event) {
+        const target = event.target;
+        return target instanceof Element && Boolean(target.closest(".task-delete"));
+      }
+
+      task.addEventListener("click", (event) => {
+        // Клик по кнопке удаления не должен переключать статус задачи
+        if (isDeleteClick(event)) return;
+        toggleTask(task);
+      });
+
+      // Доступность: переключение с клавиатуры (Пробел / Enter)
+      task.addEventListener("keydown", (event) => {
+        if (isDeleteClick(event)) return;
+        if (event.key === " " || event.key === "Enter") {
+          event.preventDefault();
+          toggleTask(task);
+        }
+      });
+
+      const deleteButton = task.querySelector(".task-delete");
+      deleteButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        deleteTask(task);
+      });
+    }
+
+    function createTask(text, isDone) {
+      const task = document.createElement("li");
+      task.className = isDone ? "task done" : "task";
+      task.setAttribute("role", "checkbox");
+      task.setAttribute("aria-checked", String(Boolean(isDone)));
+      task.tabIndex = 0;
+
+      const check = document.createElement("span");
+      check.className = "check";
+      check.setAttribute("aria-hidden", "true");
+
+      const textSpan = document.createElement("span");
+      textSpan.className = "task-text";
+      textSpan.textContent = text;
+
+      const note = document.createElement("span");
+      note.className = "task-note";
+      note.textContent = "Моя задача";
+
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "task-delete";
+      deleteButton.type = "button";
+      deleteButton.textContent = "×";
+      deleteButton.setAttribute("aria-label", "Удалить задачу");
+      deleteButton.title = "Удалить задачу";
+
+      task.append(check, textSpan, note, deleteButton);
+      bindTask(task);
+      return task;
+    }
+
+    // Восстанавливаем список из localStorage; при первом визите остаётся разметка из HTML
+    const savedTasks = loadTasks();
+    if (savedTasks !== null) {
+      taskList.textContent = "";
+      savedTasks.forEach((item) => {
+        taskList.appendChild(createTask(item.text, item.done));
+      });
+    }
+
+    getTasks().forEach(bindTask);
+
+    addForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const text = taskInput.value.trim();
+      if (!text) {
+        taskInput.focus();
+        return;
+      }
+      taskList.appendChild(createTask(text, false));
+      taskInput.value = "";
+      taskInput.focus();
+      updateProgress();
+      saveTasks();
+    });
+
+    updateProgress();
+  </script>
+</body>
+</html>
